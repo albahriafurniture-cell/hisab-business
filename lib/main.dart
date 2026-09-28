@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'data/hive_service.dart';
@@ -34,11 +36,61 @@ import 'screens/stock_item_add.dart';
 import 'screens/transaction_add.dart';
 import 'theme.dart';
 
+/// Diagnostic startup: every boot step is logged, and ANY failure — before
+/// or after runApp — lands on a readable on-screen report instead of a
+/// silent death. The report text tells us exactly where the device choked.
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await HiveService.init();
-  AppLocale.current.value = HiveService.language;
-  runApp(const HisabBusinessApp());
+  final log = HiveService.bootLog;
+  FlutterError.onError = (details) {
+    log.add('FlutterError: ${details.exception}');
+    FlutterError.presentError(details);
+  };
+  runZonedGuarded(() async {
+    try {
+      log.add('ensureInitialized ok');
+      await HiveService.init();
+      log.add('init ok [${HiveService.initNote}]');
+      AppLocale.current.value = HiveService.language;
+      log.add('locale=${HiveService.language}');
+      runApp(const HisabBusinessApp());
+      log.add('runApp called');
+    } catch (e, st) {
+      log.add('FATAL: $e');
+      runApp(_BootReport(log: List.of(log), error: '$e', stack: '$st'));
+    }
+  }, (e, st) {
+    log.add('ZONE-CAUGHT: $e');
+    runApp(_BootReport(log: List.of(log), error: '$e', stack: '$st'));
+  });
+}
+
+/// On-screen startup report (diagnostic builds). Shows the boot log plus
+/// the exact error and stack trace so the failure can be fixed precisely.
+class _BootReport extends StatelessWidget {
+  final List<String> log;
+  final String error;
+  final String stack;
+
+  const _BootReport(
+      {required this.log, required this.error, required this.stack});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Hisab Business — startup report')),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: SelectableText(
+            'BOOT LOG:\n${log.join('\n')}\n\nERROR:\n$error\n\nSTACK:\n$stack',
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class HisabBusinessApp extends StatelessWidget {

@@ -51,18 +51,53 @@ class HiveService {
   static late Box<Reminder> reminders;
   static late Box settings;
 
+  /// Diagnostic boot log. Diagnostic builds surface this on screen so a
+  /// startup failure can be reported back exactly instead of guessing.
+  static final List<String> bootLog = [];
+
+  /// Which Hive path strategy ended up working: 'hand-rolled',
+  /// 'initFlutter-fallback', 'initFlutter(web)'.
+  static String initNote = 'not-started';
+
   static Future<void> init() async {
-    // NOTE: Hive.initFlutter() is deliberately NOT used on native — it goes
-    // through path_provider, whose jni native library the release APK
-    // pipeline can still bundle, but plain dart:io resolution below is
-    // identical and has zero native risk. On web initFlutter() is safe
-    // (Hive uses IndexedDB automatically).
+    bootLog.add('HiveService.init start');
     if (kIsWeb) {
       await Hive.initFlutter();
-    } else {
-      final docsDir = await AppPaths.documentsDir();
-      Hive.init(docsDir.path);
+      initNote = 'initFlutter(web)';
+      await _openBoxes();
+      bootLog.add('init ok (web)');
+      return;
     }
+    // Strategy 1: hand-rolled dart:io path (no path_provider).
+    try {
+      final docsDir = await AppPaths.documentsDir();
+      bootLog.add('hand-rolled dir=${docsDir.path}');
+      Hive.init(docsDir.path);
+      await _openBoxes();
+      initNote = 'hand-rolled';
+      bootLog.add('hand-rolled init ok');
+      return;
+    } catch (e, st) {
+      bootLog.add('hand-rolled FAILED: $e');
+      bootLog.add('$st');
+    }
+    // Strategy 2: Hive.initFlutter() via path_provider. The official Gradle
+    // build bundles path_provider_android's JNI lib correctly (proven by the
+    // working Hisab app), so this is a safe fallback on real devices.
+    try {
+      await Hive.close();
+    } catch (_) {
+      // nothing was open — fine
+    }
+    bootLog.add('trying Hive.initFlutter() fallback');
+    await Hive.initFlutter();
+    await _openBoxes();
+    initNote = 'initFlutter-fallback';
+    bootLog.add('fallback init ok');
+  }
+
+  /// Opens all boxes, registers adapters and seeds defaults.
+  static Future<void> _openBoxes() async {
     _registerAdapters();
     business = await Hive.openBox<BusinessProfile>(businessBox);
     parties = await Hive.openBox<Party>(partiesBox);
@@ -82,6 +117,7 @@ class HiveService {
     reminders = await Hive.openBox<Reminder>(remindersBox);
     settings = await Hive.openBox(settingsBox);
     await seedDefaults();
+    bootLog.add('16 boxes open, defaults seeded');
   }
 
   static void registerAdapters() => _registerAdapters();
