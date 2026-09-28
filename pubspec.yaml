@@ -1,0 +1,31 @@
+name: hisab_business
+description: "Hisab Business — offline-first business khata app: customer/supplier ledgers, cash book, stock, staff, bills, bank book and reminders for small businesses in Pakistan."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.4
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  intl: ^0.20.2
+  uuid: ^4.5.1
+  crypto: ^3.0.6
+  pdf: ^3.11.3
+  share_plus: ^12.0.1
+  url_launcher: ^6.3.2
+  local_auth: ^3.0.0
+  image_picker: ^1.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
