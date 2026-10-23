@@ -2,7 +2,7 @@ name: hisab_business
 description: "Hisab Business — offline-first business khata app: customer/supplier ledgers, cash book, stock, staff, bills, bank book and reminders for small businesses in Pakistan."
 publish_to: 'none'
 
-version: 1.0.1+2
+version: 1.0.2+3
 
 environment:
   sdk: ^3.13.4
